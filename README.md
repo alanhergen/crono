@@ -1,2 +1,11 @@
-# crono
-Portable cronometer with speedrun aesthetic that save time over sesions, can edit the starting point
+# Crono
+![Crono](data/example.gif)
+
+## Usage
+
+| Key | Function |
+| :---: | :---: |
+| Space bar / Enter | Start / Stop the timer |
+| R | Restart the timer |
+| E | Edit start point |
+| M | Toggle milliseconds off / on |
