@@ -1,5 +1,4 @@
 # Crono
-![Crono](data/example.gif)
 
 ## Usage
 
