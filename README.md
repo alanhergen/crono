@@ -1,5 +1,7 @@
 # Crono
 
+[Example](https://github.com/user-attachments/assets/40871e44-4bea-4252-889c-bf505bf608db)
+
 ## Usage
 
 | Key | Function |
