@@ -1,19 +1,26 @@
 #!/usr/bin/env python3
 
-import pygame
+import pygame, os, sys
 from pathlib import Path
 from platformdirs import user_config_dir
 
+def resource_path(relative_path):
+    return os.path.join(os.path.abspath("."), relative_path)
+
 class App:
-    def __init__(self, path="", last_sesion=""):
+    def __init__(self, config_path="", last_sesion=""):
         
         pygame.init()
         self.title = "Crono"
         pygame.display.set_caption(self.title)
 
-        self.path = path
+        self.path_icon = resource_path("data/images/icon.png")
+        self.icon = pygame.image.load(self.path_icon)
+        pygame.display.set_icon(self.icon)
 
-        self.save_path = self.path / "save.txt"
+        self.config_path = config_path
+
+        self.save_path = self.config_path / "save.txt"
 
         self.w, self.h = 35 * 8 + 15 * 3 + 5, 50
         self.screen = pygame.display.set_mode((self.w, self.h))
@@ -29,6 +36,7 @@ class App:
         self.text_color = self.gray
 
         self.fonts = {}
+        self.path_font = resource_path("data/fonts/lemonmilk.otf")
         self.font = self.select_font(48)
 
         self.type_message = self.select_font(36).render("Type here", True, self.white)
@@ -51,8 +59,8 @@ class App:
 
     def select_font(self, size):
 
-        if not size in self.fonts.keys():            
-            self.fonts[size] = pygame.font.SysFont("lemon milk", size)
+        if not size in self.fonts.keys():     
+            self.fonts[size] = pygame.font.Font(self.path_font, size)
 
         return self.fonts[size]
 
