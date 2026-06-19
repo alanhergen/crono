@@ -28,6 +28,7 @@ class App:
         self.clock = pygame.time.Clock()
         self.running = True
 
+
         self.bg_color = "black"
         self.green = "#26a269"
         self.blue = "#12488b"
@@ -37,12 +38,14 @@ class App:
 
         self.fonts = {}
         self.path_font = resource_path("data/fonts/lemonmilk.otf")
-        self.font = self.select_font(48)
-        self.font_mini = self.select_font(36)
+        self.font_size = 48
+        self.font_size_mini = 36
 
-        self.type_message = self.select_font(36).render("Type here", True, self.white)
-        self.error_message = self.select_font(36).render("Invalid format", True, self.white)
-        self.sure_message = self.select_font(20).render("Are you sure to restart?", True, self.white)
+        self.text = {}
+
+        self.type_message = self.get_text("Type here", 36, self.white)
+        self.error_message = self.get_text("Invalid format", 36, self.white)
+        self.sure_message = self.get_text("Are you sure to restart?", 20, self.white)
 
         self.error_time = 0
         self.error_time_total = 60
@@ -60,12 +63,34 @@ class App:
 
         self.milliseconds_allowed = True
 
-    def select_font(self, size):
+    def get_font(self, size):
 
         if not size in self.fonts.keys():     
             self.fonts[size] = pygame.font.Font(self.path_font, size)
 
         return self.fonts[size]
+
+    def get_text(self, string, size=0, color=None):
+
+        if size == 0:
+            size = self.font_size
+
+        if color == None:
+            color = self.text_color
+
+        if not string in self.text.keys():
+            self.text[string] = {}
+            self.text[string][size] = {}
+            self.text[string][size][color] = self.get_font(size).render(string, True, color)
+
+        elif not size in self.text[string].keys():
+            self.text[string][size] = {}
+            self.text[string][size][color] = self.get_font(size).render(string, True, color)
+
+        elif not color in self.text[string][size].keys():
+            self.text[string][size][color] = self.get_font(size).render(string, True, color)
+
+        return self.text[string][size][color]
 
     def run(self):
 
@@ -115,7 +140,7 @@ class App:
                             self.text_color = self.green
 
                     # r - reset
-                    if event.key == pygame.K_r and not self.editor:
+                    if event.key == pygame.K_r and not self.editor and not self.time == 0:
                         self.sure_restart = True
                         self.pause = True
                         self.finish = False
@@ -126,6 +151,8 @@ class App:
                         self.editor = not self.editor
                         self.pause = True
                         self.finish = False
+                        self.sure_restart = False
+                        self.sure_restart_timeout = self.sure_restart_timeout_total
 
                     # handle time editing
                     if self.editor:
@@ -219,7 +246,7 @@ class App:
                 self.screen.blit(self.type_message, ((self.w - self.type_message.get_width()) // 2, (self.h - self.type_message.get_height()) // 2))
             
             else:
-                text_input = self.font.render(self.time_input, True, self.white)
+                text_input = self.get_text(self.time_input, color=self.white)
                 self.screen.blit(text_input, ((self.w - text_input.get_width()) // 2, (self.h - text_input.get_height()) // 2))
                 
         elif self.sure_restart:
@@ -234,11 +261,19 @@ class App:
     def render_time(self, text):
 
         if self.hours > 999:
-            self.font = self.select_font(40)
+            self.font_size = 42
+            self.font_size_mini = 30
         elif self.hours > 99:
-            self.font = self.select_font(44)
+            self.font_size = 46
+            self.font_size_mini = 34
         else:
-            self.font = self.select_font(48)
+            self.font_size = 48
+            self.font_size_mini = 36
+
+        self.number_w , self.number_h = self.get_text("0", self.font_size).get_size()
+        self.number_mini_w , self.number_mini_h = self.get_text("0", self.font_size_mini+1).get_size()
+        self.colon_w, self.colon_h = self.get_text(":", self.font_size).get_size()
+
 
         c = 0
         left_zero = 0
@@ -251,57 +286,36 @@ class App:
             c += 1
         show = max(4, c - left_zero)
 
-        zero_surface = self.font.render("0", True, self.text_color)
-        zero_mini_surface = self.font_mini.render("0", True, self.text_color)
-        one_surface = self.font.render("1", True, self.text_color)
-        one_mini_surface = self.font_mini.render("1", True, self.text_color)
-        colon_surface = self.font.render(":", True, self.text_color)
-
-        zero_offset, char_big_h = zero_surface.get_size()
-        zero_mini_offset, char_mini_h = zero_mini_surface.get_size()
-        char_mini_h += 2
-        one_offset = one_surface.get_width()
-        one_mini_offset = one_mini_surface.get_width()
-        colon_offset = colon_surface.get_width()
-
-        hide_miliseconds = zero_mini_offset * 2 + colon_offset
-
         offset = 0
-        idx = 0
+        count = 1
         for char in reversed(text):
 
-            if char == ':':
-                char_w = colon_offset
-            elif char == '.':
-                char_w = colon_offset + 4
+            if count > 2:
+                char_surface = self.get_text(char)
+                char_w, char_h = char_surface.get_size()
+                pos = (self.w - self.number_w // 2 - char_w // 2 - offset, (self.h - self.number_h) // 2)
             else:
-                char_w = zero_offset
+                char_surface = self.get_text(char, self.font_size_mini)
+                char_w, char_h = char_surface.get_size()
+                pos = (self.w - self.number_mini_w // 2 - char_w // 2 - offset, (self.h // 2 + self.number_h // 2 - self.number_mini_h))
 
-            if idx >= 2:
-                char_surface = self.font.render(char, True, self.text_color)
-                char_h = char_big_h
+            if char in ":.":
+                char_w, char_h = self.colon_w, self.colon_h
+                pos = (self.w - offset - char_w, (self.h - char_h) // 2)
+                offset += self.colon_w
+            elif count > 2:
+                offset += self.number_w
             else:
-                char_w, char_h = zero_mini_offset, char_mini_h
-                char_surface = self.font_mini.render(char, True, self.text_color)
-
-            pos = (self.w - char_w - offset, (self.h + char_big_h) // 2 - char_h)
-
-            if char == '1':
-                if idx > 2:
-                    pos = (pos[0] + one_offset // 2, pos[1])
-                else: 
-                    pos = (pos[0] + one_mini_offset // 2, pos[1])
+                offset += self.number_mini_w
 
             if not self.milliseconds_allowed:
-                pos = (pos[0] + hide_miliseconds, pos[1])
-
-            offset += char_w
+                pos = (pos[0] + self.number_mini_w * 2 + self.colon_w, pos[1])
 
             if show:
                 self.screen.blit(char_surface, pos)
             show = max(0, show-1)
 
-            idx += 1
+            count += 1
 
     def check_text(self, text):
 
