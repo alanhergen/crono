@@ -38,6 +38,7 @@ class App:
         self.fonts = {}
         self.path_font = resource_path("data/fonts/lemonmilk.otf")
         self.font = self.select_font(48)
+        self.font_mini = self.select_font(36)
 
         self.type_message = self.select_font(36).render("Type here", True, self.white)
         self.error_message = self.select_font(36).render("Invalid format", True, self.white)
@@ -47,6 +48,8 @@ class App:
         self.error_time_total = 60
 
         self.sure_restart = False
+        self.sure_restart_timeout_total = 5
+        self.sure_restart_timeout = self.sure_restart_timeout_total
 
         self.time_input = ""
         self.time = int(last_sesion) if last_sesion != "" else 0
@@ -84,6 +87,7 @@ class App:
                         # self.running = False
                         pass
 
+                    # m - show miliseconds
                     if event.key == pygame.K_m:
                         self.milliseconds_allowed = not self.milliseconds_allowed 
 
@@ -100,7 +104,7 @@ class App:
                                 self.pause = False
 
                     # space - pause/unpause
-                    if event.key == pygame.K_SPACE:
+                    if event.key == pygame.K_SPACE and not self.sure_restart:
                         self.pause = not self.pause
                         self.finish = False
                         self.editor = False
@@ -153,11 +157,19 @@ class App:
                     # are you sure to restart?
                     if self.sure_restart:
 
-                        # enter - restart
-                        if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
+                        # r again - restart
+                        if event.key == pygame.K_r and not self.sure_restart_timeout:
                             self.time = 0
                             self.sure_restart = False
+                            self.sure_restart_timeout = self.sure_restart_timeout_total
 
+                        # [enter, space, r] - restart
+                        if event.key in [pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER]:
+                            self.time = 0
+                            self.sure_restart = False
+                            self.sure_restart_timeout = self.sure_restart_timeout_total
+
+                        # escape - cancel restart
                         if event.key == pygame.K_ESCAPE:
                             self.sure_restart = False
 
@@ -185,6 +197,9 @@ class App:
             self.error_time = max(0, self.error_time - 1)
             if self.error_time <= 0:
                 self.error_time = 0
+        
+        if self.sure_restart:
+            self.sure_restart_timeout = max(0, self.sure_restart_timeout - 1)
 
     def render(self):
 
@@ -237,30 +252,46 @@ class App:
         show = max(4, c - left_zero)
 
         zero_surface = self.font.render("0", True, self.text_color)
+        zero_mini_surface = self.font_mini.render("0", True, self.text_color)
         one_surface = self.font.render("1", True, self.text_color)
+        one_mini_surface = self.font_mini.render("1", True, self.text_color)
         colon_surface = self.font.render(":", True, self.text_color)
 
-        zero_offset, char_h = zero_surface.get_size()
+        zero_offset, char_big_h = zero_surface.get_size()
+        zero_mini_offset, char_mini_h = zero_mini_surface.get_size()
+        char_mini_h += 2
         one_offset = one_surface.get_width()
+        one_mini_offset = one_mini_surface.get_width()
         colon_offset = colon_surface.get_width()
 
-        hide_miliseconds = zero_offset * 2 + colon_offset
+        hide_miliseconds = zero_mini_offset * 2 + colon_offset
 
         offset = 0
+        idx = 0
         for char in reversed(text):
 
-            if  char in ":.":
+            if char == ':':
                 char_w = colon_offset
+            elif char == '.':
+                char_w = colon_offset + 4
             else:
                 char_w = zero_offset
 
-            char_surface = self.font.render(char, True, self.text_color)
-            
-            pos = (self.w - char_w - offset, (self.h - char_h) // 2)
+            if idx >= 2:
+                char_surface = self.font.render(char, True, self.text_color)
+                char_h = char_big_h
+            else:
+                char_w, char_h = zero_mini_offset, char_mini_h
+                char_surface = self.font_mini.render(char, True, self.text_color)
+
+            pos = (self.w - char_w - offset, (self.h + char_big_h) // 2 - char_h)
 
             if char == '1':
-                pos = (pos[0] + one_offset // 2, pos[1])
-            
+                if idx > 2:
+                    pos = (pos[0] + one_offset // 2, pos[1])
+                else: 
+                    pos = (pos[0] + one_mini_offset // 2, pos[1])
+
             if not self.milliseconds_allowed:
                 pos = (pos[0] + hide_miliseconds, pos[1])
 
@@ -269,6 +300,8 @@ class App:
             if show:
                 self.screen.blit(char_surface, pos)
             show = max(0, show-1)
+
+            idx += 1
 
     def check_text(self, text):
 
