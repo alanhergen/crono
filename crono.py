@@ -8,7 +8,7 @@ def resource_path(relative_path):
     return os.path.join(os.path.abspath("."), relative_path)
 
 class App:
-    def __init__(self, config_path="", last_sesion=""):
+    def __init__(self, config_path, last_time, last_mode, last_timer_start):
         
         pygame.init()
         self.title = "Crono"
@@ -28,8 +28,9 @@ class App:
         self.clock = pygame.time.Clock()
         self.running = True
 
-
         self.bg_color = "black"
+        self.red = "red"
+        self.yellow = "#ffb000"
         self.green = "#26a269"
         self.blue = "#12488b"
         self.gray = "#808080"
@@ -45,23 +46,40 @@ class App:
 
         self.type_message = self.get_text("Type here", 36, self.white)
         self.error_message = self.get_text("Invalid format", 36, self.white)
-        self.sure_message = self.get_text("Are you sure to restart?", 20, self.white)
+        self.restart_message = self.get_text("Are you sure to restart?", 20, self.white)
+        self.switch_timer_message = self.get_text("Switch to timer?", 30, self.white)
+        self.mode_timer_message = self.get_text("Timer mode", 30, self.white)
+        self.switch_crono_message = self.get_text("Switch to crono?", 30, self.white)
+        self.mode_crono_message = self.get_text("Cronometer mode", 30, self.white)
 
-        self.error_time = 0
-        self.error_time_total = 60
-
-        self.sure_restart = False
-        self.sure_restart_timeout_total = 5
-        self.sure_restart_timeout = self.sure_restart_timeout_total
+        self.two_sec = 60 * 2
+        self.one_sec = 60
+        self.half_sec = 60 * 1/2
+        self.message_time = self.one_sec + self.half_sec
 
         self.time_input = ""
-        self.time = int(last_sesion) if last_sesion != "" else 0
+        self.time = int(last_time) if last_time != None and last_time.isdigit() else 0
+        self.timer_start = int(last_timer_start) if last_timer_start != None and last_timer_start.isdigit() else 60000 * 5 
 
         self.pause = True
         self.finish = False
-        self.editor = False
 
         self.milliseconds_allowed = True
+
+        self.mode_crono = True if last_mode == "crono" or last_mode == None else False
+        self.mode_timer = True if last_mode == "timer" else False
+        self.mode_editor = False
+        self.mode_dialog = True
+        self.dialog_wait = False
+        self.ask_restart = False
+
+        self.mode = last_mode if last_mode != None else "crono"
+        self.dialog = self.mode_crono_message if self.mode_crono else self.mode_timer_message
+        if self.mode_timer:
+            self.time = self.timer_start
+
+    def center_pos(self, surf):
+        return ((self.w - surf.get_width()) // 2, (self.h - surf.get_height()) // 2)
 
     def get_font(self, size):
 
@@ -92,75 +110,81 @@ class App:
 
         return self.text[string][size][color]
 
+    def show_dialog(self, surf, time):
+        self.pause = True
+        self.mode_dialog = True
+        self.dialog = surf
+        self.message_time = time
+        self.dialog_wait = True if time == -1 else False
+
     def run(self):
 
         while self.running:
             for event in pygame.event.get():
 
-                # clicked the close button
+                # close de app
                 if event.type == pygame.QUIT:
                     
                     with open(self.save_path, 'w') as f:
-                        f.write(str(self.time))
+                        f.write(str(self.time) + '\n')
+                        f.write(self.mode + '\n')
+                        f.write(str(self.timer_start))
                     self.running = False
 
                 # keyboard events
                 if event.type == pygame.KEYDOWN:
                     
-                    # escape - exit
-                    if event.key == pygame.K_ESCAPE:
-                        # self.running = False
-                        pass
-
-                    # m - show miliseconds
                     if event.key == pygame.K_m:
-                        self.milliseconds_allowed = not self.milliseconds_allowed 
+                        self.milliseconds_allowed = not self.milliseconds_allowed
 
-                    # enter - start/finish
-                    if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
+                    if self.dialog_wait:
 
-                        if not (self.sure_restart or self.editor):
-                            
-                            if not self.pause:
-                                self.finish = True
-                                self.pause = True
+                        if self.mode_crono:
 
-                            elif self.pause and not self.finish:
-                                self.pause = False
+                            if self.ask_restart:
 
-                    # space - pause/unpause
-                    if event.key == pygame.K_SPACE and not self.sure_restart:
-                        self.pause = not self.pause
-                        self.finish = False
-                        self.editor = False
+                                if event.key == pygame.K_r:
+                                    self.time = 0
+                                self.ask_restart = False
+                                self.mode_dialog = False
 
-                        if self.pause:
-                            self.text_color = self.gray
-                        else:
-                            self.text_color = self.green
+                            else:
 
-                    # r - reset
-                    if event.key == pygame.K_r and not self.editor and not self.time == 0:
-                        self.sure_restart = True
-                        self.pause = True
-                        self.finish = False
+                                if event.key in [pygame.K_t, pygame.K_y, pygame.K_RETURN, pygame.K_KP_ENTER]:
+                                    self.mode_crono = False
+                                    self.mode_timer = True
+                                    self.mode = "timer"
+                                    self.time = self.timer_start
+                                    self.show_dialog(self.mode_timer_message, self.one_sec)
+                                else:
+                                    self.mode_dialog = False
 
-                    # e - edit
-                    if event.key == pygame.K_e:
-                        self.time_before_edit = self.time
-                        self.editor = not self.editor
-                        self.pause = True
-                        self.finish = False
-                        self.sure_restart = False
-                        self.sure_restart_timeout = self.sure_restart_timeout_total
+                        elif self.mode_timer:
 
-                    # handle time editing
-                    if self.editor:
+                            if self.ask_restart:
 
-                        # escape - return to previous state
-                        if event.key == pygame.K_ESCAPE:
-                            self.time = self.time_before_edit
-                            self.editor = False
+                                if event.key == pygame.K_r:
+                                    self.time = self.timer_start
+                                self.ask_restart = False
+                                self.mode_dialog = False
+
+                            else:
+
+                                if event.key in [pygame.K_c, pygame.K_y, pygame.K_RETURN, pygame.K_KP_ENTER]:
+                                    self.mode_timer = False
+                                    self.mode_crono = True
+                                    self.mode = "crono"
+                                    self.time = 0
+                                    self.show_dialog(self.mode_crono_message, self.one_sec)
+                                else:
+                                    self.mode_dialog = False
+
+                        self.dialog_wait = False
+
+                    elif self.mode_editor:
+
+                        if event.key in [pygame.K_ESCAPE, pygame.K_e]:
+                            self.mode_editor = False
 
                         # backspace - delete last digit
                         if event.key == pygame.K_BACKSPACE:
@@ -174,32 +198,70 @@ class App:
                         if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
 
                             if self.check_text(self.time_input):
-                                self.time = self.make_time(self.time_input)
-                                self.editor = False
+
+                                start_point = self.make_time(self.time_input)
+                                if self.mode_timer:
+                                    self.timer_start = start_point
+
+                                self.time = start_point
+                                self.mode_editor = False
                                 self.time_input = ""
 
                             else:
-                                self.error_time = self.error_time_total
+                                self.show_dialog(self.error_message, self.one_sec)
 
-                    # are you sure to restart?
-                    if self.sure_restart:
+                    elif self.mode_crono:
+                        
+                        if event.key == pygame.K_SPACE:
+                            self.pause = not self.pause
+                            self.finish = False
+                        
+                        if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
+                            if self.text_color == self.gray:
+                                self.pause = False
+                                self.finish = False
+                            else:
+                                self.pause = True
+                                self.finish = True
 
-                        # r again - restart
-                        if event.key == pygame.K_r and not self.sure_restart_timeout:
-                            self.time = 0
-                            self.sure_restart = False
-                            self.sure_restart_timeout = self.sure_restart_timeout_total
+                        if event.key == pygame.K_t:
+                            self.show_dialog(self.switch_timer_message, -1)
+                            
+                        if event.key == pygame.K_e:
+                            self.mode_editor = True
+                            self.pause = True
 
-                        # [enter, space, r] - restart
-                        if event.key in [pygame.K_SPACE, pygame.K_RETURN, pygame.K_KP_ENTER]:
-                            self.time = 0
-                            self.sure_restart = False
-                            self.sure_restart_timeout = self.sure_restart_timeout_total
+                        if event.key == pygame.K_r:
 
-                        # escape - cancel restart
-                        if event.key == pygame.K_ESCAPE:
-                            self.sure_restart = False
+                            if self.time == 0:
+                                continue
+                            else:
+                                self.ask_restart = True
+                                self.show_dialog(self.restart_message, -1)
 
+                    elif self.mode_timer:
+                        
+                        if event.key == pygame.K_SPACE:
+                            self.pause = not self.pause
+                            self.finish = False
+                        
+                        if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
+                            self.pause = not self.pause
+
+                        if event.key == pygame.K_c:                            
+                            self.show_dialog(self.switch_crono_message, -1)
+                            
+                        if event.key == pygame.K_e:
+                            self.mode_editor = True
+                            self.pause = True
+
+                        if event.key == pygame.K_r:
+
+                            if self.time == self.timer_start:
+                                continue
+                            else:
+                                self.ask_restart = True
+                                self.show_dialog(self.restart_message, -1)
             self.update()
             self.render()
 
@@ -209,50 +271,59 @@ class App:
         self.screen.fill(self.green)
         self.clock.tick(60)
 
+        # Up or down
+        mode = 1 if self.mode_crono else -1
+
         if not self.pause:
-            self.time += self.clock.get_time()
-
-        if self.pause:
-            self.text_color = self.gray
-        else:
+            self.time = max(0, self.time + mode * self.clock.get_time())
+            
+        # Text color
+        if self.mode_crono:
             self.text_color = self.green
+            
+            if self.pause:
+                self.text_color = self.gray
+            
+            if self.finish and self.time != 0:
+                self.text_color = self.blue
 
-        if self.finish:
-            self.text_color = self.blue
+        elif self.mode_timer:
+            self.text_color = self.yellow
+            
+            if self.pause:
+                self.text_color = self.gray
 
-        if self.error_time:
-            self.error_time = max(0, self.error_time - 1)
-            if self.error_time <= 0:
-                self.error_time = 0
-        
-        if self.sure_restart:
-            self.sure_restart_timeout = max(0, self.sure_restart_timeout - 1)
+            if self.time <= 0:
+                self.text_color = self.red
+
+        if self.message_time:
+            self.message_time = max(0, self.message_time - 1)
+
+            if not self.dialog_wait and self.message_time <= 0:
+                self.mode_dialog = False
+
 
     def render(self):
 
         self.screen.fill(self.bg_color)
 
-        self.hours = (self.time // 3600000)
-        self.minutes = (self.time // 60000) % 60
-        self.seconds = (self.time // 1000) % 60
         self.milliseconds = self.time % 1000 // 10
+        self.seconds = (self.time // 1000) % 60
+        self.minutes = (self.time // 60000) % 60
+        self.hours = (self.time // 3600000)
 
-        if self.editor:
-            
-            if self.error_time:
-                self.screen.blit(self.error_message, ((self.w - self.error_message.get_width()) // 2, (self.h - self.error_message.get_height()) // 2))
-
-            elif self.time_input == "":
-                self.screen.blit(self.type_message, ((self.w - self.type_message.get_width()) // 2, (self.h - self.type_message.get_height()) // 2))
-            
+        if self.mode_dialog:
+            self.screen.blit(self.dialog, self.center_pos(self.dialog))
+        
+        elif self.mode_editor:
+            if self.time_input == "":
+                text = self.type_message
             else:
-                text_input = self.get_text(self.time_input, color=self.white)
-                self.screen.blit(text_input, ((self.w - text_input.get_width()) // 2, (self.h - text_input.get_height()) // 2))
-                
-        elif self.sure_restart:
-                self.screen.blit(self.sure_message, ((self.w - self.sure_message.get_width()) // 2, (self.h - self.sure_message.get_height()) // 2))
+                text = self.get_text(self.time_input, self.font_size, self.white)
+            self.screen.blit(text, self.center_pos(text))
+        
         else:
-            
+            # cronometer or timer
             text = f"{self.hours:02}:{self.minutes:02}:{self.seconds:02}.{self.milliseconds:02}"
             self.render_time(text)
 
@@ -396,8 +467,12 @@ class App:
         milliseconds = int(miliseconds)
 
         total_time = (hours * 3600000) + (minutes * 60000) + (seconds * 1000) + (milliseconds * 10)
+
         return total_time
 
+
+def clean_newline(s):
+    return "".join([char for char in s if char not in "\n"])
 
 if __name__ == "__main__":
 
@@ -408,6 +483,8 @@ if __name__ == "__main__":
 
     with open(save_path, "+a") as f:
         f.seek(0)
-        data = f.read()
-
-    App(config_dir, data).run()
+        last_time = clean_newline(f.readline())
+        last_mode = clean_newline(f.readline())
+        last_timer_start = clean_newline(f.readline())
+        
+    App(config_dir, last_time, last_mode, last_timer_start).run()
