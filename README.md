@@ -1,6 +1,6 @@
 # Crono
 
-[Example](https://github.com/user-attachments/assets/40871e44-4bea-4252-889c-bf505bf608db)
+[Example](https://github.com/user-attachments/assets/e418c5c4-7c60-47be-99c4-2bd3035fa8e3)
 
 ## Usage
 
