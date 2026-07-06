@@ -6,7 +6,12 @@
 
 | Key | Function |
 | :---: | :---: |
-| Space bar / Enter | Start / Stop the timer |
-| R | Restart the timer |
+| Space | Start / Stop the timer |
+| R | Restart the timer* |
+| C | Cronometer mode* |
+| T | Timer mode* |
 | E | Edit start point |
+| Enter / Esc | Confirm / Cancel |
 | M | Toggle milliseconds off / on |
+
+\* You can double tap the key to confirm the mode or restart
