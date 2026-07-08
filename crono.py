@@ -4,18 +4,27 @@ import pygame, os, sys
 from pathlib import Path
 from platformdirs import user_config_dir
 
-def resource_path(relative_path):
-    return os.path.join(os.path.abspath("."), relative_path)
+def get_path(relative_path):
+    if getattr(sys, 'frozen', False):
+        # ./binario
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # python .py
+        base_path = os.path.dirname(os.path.abspath(__file__))
+        
+    return os.path.join(base_path, relative_path)
+
+def clean_newline(s):
+    return "".join([char for char in s if char not in "\n"])
 
 class App:
     def __init__(self, config_path, last_time, last_mode, last_timer_start):
         
         pygame.init()
-        self.title = "Crono"
-        pygame.display.set_caption(self.title)
+        pygame.display.set_mode(flags=pygame.HIDDEN)
+        pygame.display.set_caption("Crono")
 
-        self.path_icon = resource_path("data/images/icon.png")
-        self.icon = pygame.image.load(self.path_icon)
+        self.icon = self.load_image("data/images/icon.png")
         pygame.display.set_icon(self.icon)
 
         self.config_path = config_path
@@ -38,7 +47,7 @@ class App:
         self.text_color = self.gray
 
         self.fonts = {}
-        self.path_font = resource_path("data/fonts/lemonmilk.otf")
+        self.path_font = get_path("data/fonts/lemonmilk.otf")
         self.font_size = 48
         self.font_size_mini = 36
 
@@ -77,6 +86,9 @@ class App:
         self.dialog = self.mode_crono_message if self.mode_crono else self.mode_timer_message
         if self.mode_timer:
             self.time = self.timer_start
+
+    def load_image(self, path):
+        return pygame.image.load(get_path(path)).convert_alpha()
 
     def center_pos(self, surf):
         return ((self.w - surf.get_width()) // 2, (self.h - surf.get_height()) // 2)
@@ -469,10 +481,6 @@ class App:
         total_time = (hours * 3600000) + (minutes * 60000) + (seconds * 1000) + (milliseconds * 10)
 
         return total_time
-
-
-def clean_newline(s):
-    return "".join([char for char in s if char not in "\n"])
 
 if __name__ == "__main__":
 
