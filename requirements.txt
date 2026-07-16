@@ -1,0 +1,8 @@
+altgraph==0.17.5
+packaging==25.0
+platformdirs==4.9.6
+pygame==2.6.1
+pyinstaller==6.17.0
+pyinstaller-hooks-contrib==2025.11
+screeninfo==0.8.1
+setuptools==82.0.1
