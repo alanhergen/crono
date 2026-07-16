@@ -1,0 +1,7 @@
+.*
+usr/*
+build/*
+AppRun
+crono
+*.desktop
+*.spec
