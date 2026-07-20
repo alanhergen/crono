@@ -55,7 +55,7 @@ class App:
         self.text = {}
 
         self.type_message = self.get_text("Type here", 36, self.white)
-        self.error_message = self.get_text("Invalid format", 36, self.white)
+        self.error_format = self.get_text("Invalid format", 36, self.white)
         self.restart_message = self.get_text("Are you sure to restart?", 20, self.white)
         self.switch_timer_message = self.get_text("Switch to timer?", 30, self.white)
         self.mode_timer_message = self.get_text("Timer mode", 30, self.white)
@@ -91,6 +91,11 @@ class App:
         self.dialog = self.mode_crono_message if self.mode_crono else self.mode_timer_message
         if self.mode_timer:
             self.time = self.timer_start
+
+        self.text_hours = "00"
+        self.text_minutes = "00"
+        self.text_seconds = "00"
+        self.text_miliseconds = "00"
 
     def load_image(self, path):
         return pygame.image.load(get_path(path)).convert_alpha()
@@ -152,7 +157,8 @@ class App:
                 if event.type == pygame.KEYDOWN:
                     
                     if event.key == pygame.K_m:
-                        self.milliseconds_allowed = not self.milliseconds_allowed
+                        if not self.mode_editor:
+                            self.milliseconds_allowed = not self.milliseconds_allowed
 
                     if self.dialog_wait:
 
@@ -207,9 +213,8 @@ class App:
                         if event.key == pygame.K_BACKSPACE:
                             self.time_input = self.time_input[:-1]
                         else:
-                            char = event.unicode
-                            if char in "0123456789:.":
-                                self.time_input += char
+                            if event.unicode in "0123456789:.mh":
+                                self.time_input += event.unicode.lower()
 
                         # validate and apply time input
                         if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
@@ -225,7 +230,7 @@ class App:
                                 self.time_input = ""
 
                             else:
-                                self.show_dialog(self.error_message, self.one_sec)
+                                self.show_dialog(self.error_format, self.one_sec)
 
                     elif self.mode_crono:
                         
@@ -245,6 +250,11 @@ class App:
                             self.show_dialog(self.switch_timer_message, -1)
                             
                         if event.key == pygame.K_e:
+                            self.mode_editor = True
+                            self.pause = True
+
+                        if event.unicode in "0123456789" and event.unicode != '':
+                            self.time_input = event.unicode
                             self.mode_editor = True
                             self.pause = True
 
@@ -269,6 +279,11 @@ class App:
                             self.show_dialog(self.switch_crono_message, -1)
                             
                         if event.key == pygame.K_e:
+                            self.mode_editor = True
+                            self.pause = True
+
+                        if event.unicode in "0123456789" and event.unicode != '':
+                            self.time_input = event.unicode
                             self.mode_editor = True
                             self.pause = True
 
@@ -403,47 +418,80 @@ class App:
 
             count += 1
 
+    def make_input_time(self, text):
+        dots = text.count(".")
+        colons = text.count(":")
+        m = text.count("m")
+        h = text.count("h")
+        print(h)
+        if colons > 2 or dots > 1 or h > 1 or m > 1:
+            result = False
+            return result
+
+        if h == 0 and m == 0:
+            if colons == 0:
+                self.text_seconds = text.split(".")[0].split(":")[0]
+                self.text_minutes = "00"
+                self.text_hours = "00"
+
+            if colons == 1:
+                self.text_seconds = text.split(".")[0].split(":")[1]
+                self.text_minutes = text.split(":")[0]
+                self.text_hours = "00"
+
+            if colons == 2:
+                self.text_seconds = text.split(".")[0].split(":")[2]
+                self.text_minutes = text.split(":")[1]
+                self.text_hours = text.split(":")[0]
+        
+        elif h == 0:
+            self.text_minutes = text.split("m")[0]
+            self.text_seconds = text.split("m")[1]
+            if self.text_seconds in ["", "\n"]:
+                self.text_seconds = "00"
+            self.text_hours = "00"
+
+        else:
+            self.text_hours = text.split("h")[0]
+            self.text_minutes = text.split("h")[1]
+            if self.text_minutes in ["", "\n"]:
+                self.text_minutes = "00"
+                self.text_seconds = "00"
+            
+            elif m == 0:
+                    self.text_seconds = "00"
+            else:
+                self.text_minutes = text.split("h")[1].split("m")[0]
+                self.text_seconds = text.split("m")[1]
+                if self.text_seconds in ["", "\n"]:
+                    self.text_seconds = "00"
+
+        if dots == 1:
+            self.text_miliseconds = text.split(".")[1]
+        else:
+            self.text_miliseconds = "00"
+
+        self.text_minutes = self.text_minutes.replace("m","")
+
+        return True
+
     def check_text(self, text):
 
         result = True
 
-        dots = text.count(".")
-        colons = text.count(":")
-
-        if colons > 2 or dots > 1:
-            result = False
-            return result
-
-        if colons == 0:
-            seconds = text.split(".")[0].split(":")[0]
-            minutes = "00"
-            hours = "00"
-
-        if colons == 1:
-            seconds = text.split(".")[0].split(":")[1]
-            minutes = text.split(":")[0]
-            hours = "00"
-
-        if colons == 2:
-            seconds = text.split(".")[0].split(":")[2]
-            minutes = text.split(":")[1]
-            hours = text.split(":")[0]
-
-        if dots == 1:
-            miliseconds = text.split(".")[1]
-        else:
-            miliseconds = "00"
-
-        if not hours.isnumeric():
+        if not self.make_input_time(text):
             result = False
 
-        elif not minutes.isnumeric() or int(minutes) > 59:
+        elif not self.text_hours.isnumeric():
             result = False
 
-        elif not seconds.isnumeric() or int(seconds) > 59:
+        elif not self.text_minutes.isnumeric() or int(self.text_minutes) > 59:
             result = False
 
-        elif not miliseconds.isnumeric() or int(miliseconds) > 99:
+        elif not self.text_seconds.isnumeric() or int(self.text_seconds) > 59:
+            result = False
+
+        elif not self.text_miliseconds.isnumeric() or int(self.text_miliseconds) > 99:
             result = False
 
         return result
@@ -453,33 +501,10 @@ class App:
         if not text:
             return 0
 
-        dots = text.count(".")
-        colons = text.count(":")
-
-        if colons == 0:
-            seconds = text.split(".")[0].split(":")[0]
-            minutes = "00"
-            hours = "00"
-
-        if colons == 1:
-            seconds = text.split(".")[0].split(":")[1]
-            minutes = text.split(":")[0]
-            hours = "00"
-
-        if colons == 2:
-            seconds = text.split(".")[0].split(":")[2]
-            minutes = text.split(":")[1]
-            hours = text.split(":")[0]
-
-        if dots == 1:
-            miliseconds = text.split(".")[1]
-        else:
-            miliseconds = "00"
-
-        hours = int(hours)
-        minutes = int(minutes)
-        seconds = int(seconds)
-        milliseconds = int(miliseconds)
+        hours =        int(self.text_hours)
+        minutes =      int(self.text_minutes)
+        seconds =      int(self.text_seconds)
+        milliseconds = int(self.text_miliseconds)
 
         total_time = (hours * 3600000) + (minutes * 60000) + (seconds * 1000) + (milliseconds * 10)
 
