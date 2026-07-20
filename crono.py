@@ -20,7 +20,7 @@ def clean_newline(s):
     return "".join([char for char in s if char not in "\n"])
 
 class App:
-    def __init__(self, config_path, last_time, last_mode, last_timer_start):
+    def __init__(self, save_path, last_time, last_mode, last_timer_start):
         
         pygame.init()
         pygame.display.set_mode(flags=pygame.HIDDEN)
@@ -29,9 +29,7 @@ class App:
         self.icon = self.load_image("data/images/icon.png")
         pygame.display.set_icon(self.icon)
 
-        self.config_path = config_path
-
-        self.save_path = self.config_path / "save.txt"
+        self.save_path = save_path
 
         self.w, self.h = 35 * 8 + 15 * 3 + 5, 50
         self.screen = pygame.display.set_mode((self.w, self.h))
@@ -64,10 +62,10 @@ class App:
         self.switch_crono_message = self.get_text("Switch to crono?", 30, self.white)
         self.mode_crono_message = self.get_text("Cronometer mode", 30, self.white)
 
-        self.two_sec = 60 * 2
-        self.one_sec = 60
-        self.half_sec = 60 * 1/2
-        self.message_time = self.one_sec + self.half_sec
+        self.two_sec = self.fps * 2
+        self.one_sec = self.fps * 1
+        self.half_sec = self.fps * 1/2
+        self.message_time = self.one_sec
 
         self.time_input = ""
         self.time = int(last_time) if last_time != None and last_time.isdigit() else 0
@@ -78,14 +76,18 @@ class App:
 
         self.milliseconds_allowed = True
 
-        self.mode_crono = True if last_mode == "crono" or last_mode == None else False
+        if last_mode == "" or last_mode == None:
+            last_mode = "crono"
+
+        self.mode_crono = True if last_mode == "crono" else False
         self.mode_timer = True if last_mode == "timer" else False
         self.mode_editor = False
         self.mode_dialog = True
         self.dialog_wait = False
         self.ask_restart = False
 
-        self.mode = last_mode if last_mode != None else "crono"
+        self.mode = last_mode
+
         self.dialog = self.mode_crono_message if self.mode_crono else self.mode_timer_message
         if self.mode_timer:
             self.time = self.timer_start
@@ -316,7 +318,6 @@ class App:
             if not self.dialog_wait and self.message_time <= 0:
                 self.mode_dialog = False
 
-
     def render(self):
 
         self.screen.fill(self.bg_color)
@@ -497,4 +498,4 @@ if __name__ == "__main__":
         last_mode = clean_newline(f.readline())
         last_timer_start = clean_newline(f.readline())
         
-    App(config_dir, last_time, last_mode, last_timer_start).run()
+    App(save_path, last_time, last_mode, last_timer_start).run()
