@@ -15,3 +15,5 @@
 | M | Toggle milliseconds off / on |
 
 \* You can double tap the key to confirm the mode or restart
+
+You can also type 'h' or/and 'm' next to the digits to indicate hours or/and minutes in the editor mode to set the starting point
