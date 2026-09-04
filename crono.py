@@ -23,11 +23,14 @@ class App:
     def __init__(self, save_path, last_time, last_mode, last_timer_start):
         
         pygame.init()
+        pygame.mixer.init()
         pygame.display.set_mode(flags=pygame.HIDDEN)
         pygame.display.set_caption("Crono")
 
         self.icon = self.load_image("data/images/icon.png")
         pygame.display.set_icon(self.icon)
+
+        self.alarm_sound = pygame.mixer.Sound(get_path("data/sfx/timer.mp3"))
 
         self.save_path = save_path
 
@@ -73,6 +76,8 @@ class App:
 
         self.pause = True
         self.finish = False
+        self.alarm_playing = False
+        self.alarm_disabled = False
 
         self.milliseconds_allowed = True
 
@@ -178,6 +183,7 @@ class App:
                                     self.mode_timer = True
                                     self.mode = "timer"
                                     self.time = self.timer_start
+                                    self.alarm_disabled = False
                                     self.show_dialog(self.mode_timer_message, self.one_sec)
                                 else:
                                     self.mode_dialog = False
@@ -188,6 +194,7 @@ class App:
 
                                 if event.key == pygame.K_r:
                                     self.time = self.timer_start
+                                    self.alarm_disabled = False
                                 self.ask_restart = False
                                 self.mode_dialog = False
 
@@ -228,6 +235,7 @@ class App:
                                 self.time = start_point
                                 self.mode_editor = False
                                 self.time_input = ""
+                                self.alarm_disabled = False
 
                             else:
                                 self.show_dialog(self.error_format, self.one_sec)
@@ -271,12 +279,25 @@ class App:
                         if event.key == pygame.K_SPACE:
                             self.pause = not self.pause
                             self.finish = False
+                            if self.alarm_playing:
+                                self.alarm_sound.stop()
+                                self.alarm_playing = False
+                            if self.time <= 0:
+                                self.alarm_disabled = True
                         
                         if event.key in [pygame.K_RETURN, pygame.K_KP_ENTER]:
                             self.pause = not self.pause
+                            if self.alarm_playing:
+                                self.alarm_sound.stop()
+                                self.alarm_playing = False
+                            if self.time <= 0:
+                                self.alarm_disabled = True
 
                         if event.key == pygame.K_c:                            
                             self.show_dialog(self.switch_crono_message, -1)
+                            if self.alarm_playing:
+                                self.alarm_sound.stop()
+                                self.alarm_playing = False
                             
                         if event.key == pygame.K_e:
                             self.mode_editor = True
@@ -294,6 +315,9 @@ class App:
                             else:
                                 self.ask_restart = True
                                 self.show_dialog(self.restart_message, -1)
+                                if self.alarm_playing:
+                                    self.alarm_sound.stop()
+                                    self.alarm_playing = False
             self.update()
             self.render()
 
@@ -321,11 +345,16 @@ class App:
         elif self.mode_timer:
             self.text_color = self.yellow
             
-            if self.pause:
-                self.text_color = self.gray
-
             if self.time <= 0:
-                self.text_color = self.red
+                if self.pause or self.alarm_disabled:
+                    self.text_color = self.gray
+                else:
+                    self.text_color = self.red
+                    if not self.alarm_playing:
+                        self.alarm_sound.play(-1)
+                        self.alarm_playing = True
+            elif self.pause:
+                self.text_color = self.gray
 
         if self.message_time:
             self.message_time = max(0, self.message_time - 1)
@@ -423,7 +452,6 @@ class App:
         colons = text.count(":")
         m = text.count("m")
         h = text.count("h")
-        print(h)
         if colons > 2 or dots > 1 or h > 1 or m > 1:
             result = False
             return result
